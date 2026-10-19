@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: open-lobby
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    # To keep chat history across restarts, switch to a paid plan (for example
+    # "starter"), then uncomment the lines below.
+    # disk:
+    #   name: lobby-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    # envVars:
+    #   - key: DATA_DIR
+    #     value: /var/data

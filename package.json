@@ -1,0 +1,16 @@
+{
+  "name": "open-lobby",
+  "version": "1.0.0",
+  "description": "A public chat room: pick a username, chat with everyone online.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "license": "MIT"
+}
