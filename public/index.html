@@ -1,0 +1,937 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Open Lobby - Free Public Chat Room</title>
+<meta name="description" content="Open Lobby is a free public chat room. Pick a username and talk live with everyone who is online. No account needed.">
+<meta property="og:title" content="Open Lobby - Free Public Chat Room">
+<meta property="og:description" content="Pick a username and talk live with everyone who is online. No account needed.">
+<meta property="og:type" content="website">
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Familjen+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --fg: #1b2530;
+  --muted: #647282;
+  --line: #d3dae1;
+  --accent: #1c6e8c;
+  --accent-fg: #ffffff;
+  --danger: #b3382c;
+  --ok: #2e9b6a;
+  --mark: #ffe9a8;
+  --name-s: 62%;
+  --name-l: 34%;
+  --font-display: "Familjen Grotesk", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131a21;
+    --surface: #1b242d;
+    --fg: #e3e9ef;
+    --muted: #8a99a8;
+    --line: #2d3945;
+    --accent: #5bb6d6;
+    --accent-fg: #0d1a22;
+    --danger: #ef8a7e;
+    --ok: #4fc08f;
+    --mark: #5c4a12;
+    --name-s: 70%;
+    --name-l: 68%;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+.screen { height: 100%; display: flex; flex-direction: column; max-width: 860px; margin: 0 auto; }
+
+#join { justify-content: center; padding-block: 24px; }
+.join-card { display: grid; gap: 18px; }
+.join-card h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.2rem, 9vw, 3.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+.join-card p { margin: 0; color: var(--muted); max-width: 46ch; }
+.join-form { display: grid; gap: 10px; max-width: 420px; }
+.join-form label { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.field-row { display: flex; gap: 8px; }
+.field-row input { flex: 1; min-width: 0; }
+input[type="text"], input[type="search"] {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 11px 12px;
+}
+input::placeholder { color: var(--muted); }
+.btn {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: 0;
+  border-radius: 4px;
+  padding: 11px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.quiet { background: transparent; color: var(--muted); border: 1px solid var(--line); padding: 6px 10px; font-size: 12px; font-weight: 500; }
+.btn.quiet:hover { color: var(--fg); }
+.err { min-height: 1.4em; margin: 0; color: var(--danger); font-size: 13px; }
+
+#chat { padding-top: max(10px, env(safe-area-inset-top, 0px)); padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); gap: 10px; }
+.bar { display: flex; align-items: center; gap: 12px; padding: 4px 0 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.bar h2 { font-family: var(--font-display); font-size: 1.2rem; margin: 0; letter-spacing: -0.01em; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.status[data-state="live"] .dot { background: var(--ok); }
+.status[data-state="down"] .dot { background: var(--danger); }
+.badge { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; padding: 1px 6px; }
+.bar .spacer { flex: 1; }
+.me { font-size: 12px; color: var(--muted); }
+.me b { color: var(--fg); font-weight: 600; }
+
+.search { display: flex; gap: 8px; align-items: center; }
+.search input { flex: 1; min-width: 0; padding: 8px 10px; font-size: 13px; }
+.search .count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+#log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 12px 14px;
+  overscroll-behavior: contain;
+}
+.msg { display: flex; gap: 10px; padding: 2px 0; align-items: baseline; }
+.msg time { flex: none; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.msg .body { min-width: 0; flex: 1 1 auto; overflow-wrap: anywhere; white-space: pre-wrap; }
+.msg .who { font-weight: 600; color: hsl(var(--h) var(--name-s) var(--name-l)); }
+.msg .edited { color: var(--muted); font-size: 11px; margin-left: 6px; }
+.tools { flex: none; display: flex; gap: 8px; }
+.tools button { background: none; border: 0; padding: 0; color: var(--muted); font-size: 11px; text-decoration: underline; cursor: pointer; }
+.tools button:hover { color: var(--fg); }
+.tools button.del:hover { color: var(--danger); }
+.edit-input { width: min(100%, 460px); padding: 3px 8px !important; font-size: 14px; }
+mark { background: var(--mark); color: inherit; border-radius: 2px; }
+.empty { color: var(--muted); padding: 8px 0; }
+
+.composer { display: flex; gap: 8px; }
+.composer input { flex: 1; min-width: 0; }
+.note { margin: 0; font-size: 12px; color: var(--muted); min-height: 1.3em; }
+.note.bad { color: var(--danger); }
+
+.plus-wrap { position: relative; display: flex; }
+.plus {
+  width: 44px;
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.plus:hover { border-color: var(--accent); }
+.menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  min-width: 200px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+.menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 3px;
+  padding: 9px 10px;
+  cursor: pointer;
+}
+.menu button:hover, .menu button:focus-visible { background: var(--bg); }
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.chip span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+.att { margin-top: 4px; white-space: normal; }
+.att .pic { display: block; max-width: min(100%, 360px); max-height: 320px; border-radius: 4px; border: 1px solid var(--line); background: #fff; }
+.att .vid { display: block; max-width: min(100%, 420px); max-height: 320px; border-radius: 4px; background: #000; }
+.att .aud { display: block; width: min(100%, 360px); }
+.att .filelink { color: var(--accent); }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+}
+.panel {
+  width: 100%;
+  max-width: 860px;
+  max-height: 100%;
+  overflow: auto;
+  display: grid;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 14px;
+}
+.panel h3 { margin: 0; font-family: var(--font-display); font-size: 1.1rem; }
+#drawCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 8 / 5;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: crosshair;
+  touch-action: none;
+}
+.tools-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tools-row .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+.swatch { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); cursor: pointer; padding: 0; }
+.swatch.on { box-shadow: 0 0 0 2px var(--accent); }
+.tool { background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 5px 10px; font-size: 12px; cursor: pointer; }
+.tool.on { border-color: var(--accent); color: var(--accent); }
+.tool:hover { border-color: var(--accent); }
+.panel-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; }
+.panel-actions .err { flex: 1; min-width: 0; min-height: 0; }
+
+@media (max-width: 480px) {
+  .msg { gap: 8px; flex-wrap: wrap; }
+  .msg time { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+
+<main id="join" class="screen">
+  <div class="join-card">
+    <h1>Open Lobby</h1>
+    <p>A free public chat room. Pick a username and you are in. Everyone online sees the same conversation. No account needed.</p>
+    <form class="join-form" id="joinForm" autocomplete="off">
+      <label for="nameInput">Username</label>
+      <div class="field-row">
+        <input type="text" id="nameInput" maxlength="20" placeholder="2 to 20 characters" spellcheck="false" autocapitalize="off">
+        <button class="btn" type="submit">Enter</button>
+      </div>
+      <p class="err" id="joinErr" role="alert"></p>
+    </form>
+  </div>
+</main>
+
+<main id="chat" class="screen" hidden>
+  <div class="bar">
+    <h2>Open Lobby</h2>
+    <span class="status" id="status" data-state="wait"><span class="dot"></span><span id="statusText">Connecting</span></span>
+    <span class="badge" id="adminBadge" hidden>Admin</span>
+    <span class="spacer"></span>
+    <span class="me">You are <b id="meName"></b></span>
+    <button class="btn quiet" id="renameBtn" type="button">Change name</button>
+  </div>
+  <div class="search">
+    <input type="search" id="searchInput" placeholder="Search messages and usernames" aria-label="Search messages" autocomplete="off">
+    <span class="count" id="searchCount"></span>
+  </div>
+  <div id="log" aria-live="polite"><div class="empty">Connecting to the room.</div></div>
+  <div class="chip" id="attach" hidden>
+    <span id="attachName"></span>
+    <button class="btn quiet" id="attachRemove" type="button">Remove</button>
+  </div>
+  <form class="composer" id="sendForm" autocomplete="off">
+    <div class="plus-wrap">
+      <button class="plus" id="plusBtn" type="button" aria-label="Add an attachment" aria-haspopup="menu" aria-expanded="false" title="Add a file or drawing">+</button>
+      <div class="menu" id="plusMenu" role="menu" hidden>
+        <button type="button" role="menuitem" data-pick="file">Upload a file</button>
+        <button type="button" role="menuitem" data-pick="draw">Draw something</button>
+      </div>
+    </div>
+    <input type="text" id="msgInput" maxlength="500" placeholder="Type a message and press Enter" aria-label="Message">
+    <button class="btn" id="sendBtn" type="submit">Send</button>
+  </form>
+  <input type="file" id="fileInput" hidden>
+  <p class="note" id="note"></p>
+</main>
+
+<div class="modal" id="drawModal" role="dialog" aria-modal="true" aria-label="Draw something" hidden>
+  <div class="panel">
+    <h3>Draw something</h3>
+    <canvas id="drawCanvas" width="800" height="500"></canvas>
+    <div class="tools-row">
+      <span id="drawColors" class="tools-row" role="group" aria-label="Colour"></span>
+      <span class="sep"></span>
+      <button class="tool" type="button" data-size="3">Thin</button>
+      <button class="tool on" type="button" data-size="6">Medium</button>
+      <button class="tool" type="button" data-size="14">Thick</button>
+      <span class="sep"></span>
+      <button class="tool" type="button" id="drawEraser" aria-pressed="false">Eraser</button>
+      <button class="tool" type="button" id="drawUndo">Undo</button>
+      <button class="tool" type="button" id="drawClear">Clear</button>
+    </div>
+    <div class="panel-actions">
+      <p class="err" id="drawErr" role="alert"></p>
+      <button class="btn quiet" type="button" id="drawCancel">Cancel</button>
+      <button class="btn" type="button" id="drawSend">Send drawing</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var NAME_KEY = "openlobby.username";
+  var TOKEN_KEY = "openlobby.admintoken";
+  var MAX_KEPT = 2000;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var joinEl = $("join"), chatEl = $("chat"), joinForm = $("joinForm"), nameInput = $("nameInput");
+  var joinErr = $("joinErr"), meName = $("meName"), renameBtn = $("renameBtn"), logEl = $("log");
+  var sendForm = $("sendForm"), msgInput = $("msgInput"), noteEl = $("note");
+  var statusEl = $("status"), statusText = $("statusText"), adminBadge = $("adminBadge");
+  var searchInput = $("searchInput"), searchCount = $("searchCount");
+
+  var username = "";
+  var messages = [];
+  var loaded = false;
+  var online = 0;
+  var ws = null;
+  var retry = 0;
+  var isAdmin = false;
+  var editingId = null;
+  var editDraft = "";
+  var pendingClearAt = 0;
+  var stickToBottom = true;
+
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+  function setStatus(state, text) {
+    statusEl.setAttribute("data-state", state);
+    statusText.textContent = text;
+  }
+  function setNote(text, bad) {
+    noteEl.textContent = text || "";
+    noteEl.className = "note" + (bad ? " bad" : "");
+  }
+  function updateStatusLive() {
+    setStatus("live", online > 0 ? "Live, " + online + " online" : "Live");
+  }
+  function sendJson(obj) {
+    if (!ws || ws.readyState !== 1) { setNote("Not connected yet. Try again in a moment.", true); return false; }
+    ws.send(JSON.stringify(obj));
+    return true;
+  }
+  function setAdmin(on) {
+    isAdmin = on;
+    adminBadge.hidden = !on;
+    if (!on) editingId = null;
+    render();
+  }
+
+  function hueFor(name) {
+    var h = 0;
+    for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+    return h;
+  }
+  function clock(ts) {
+    var d = new Date(ts);
+    return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
+  // append text with case-insensitive highlights, using DOM nodes only (no innerHTML)
+  function appendHighlighted(parent, text, q) {
+    if (!q) { parent.appendChild(document.createTextNode(text)); return; }
+    var lower = text.toLowerCase(), i = 0, at;
+    while ((at = lower.indexOf(q, i)) !== -1) {
+      if (at > i) parent.appendChild(document.createTextNode(text.slice(i, at)));
+      var mk = document.createElement("mark");
+      mk.textContent = text.slice(at, at + q.length);
+      parent.appendChild(mk);
+      i = at + q.length;
+    }
+    if (i < text.length) parent.appendChild(document.createTextNode(text.slice(i)));
+  }
+
+  function toolButton(label, act, id, cls) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.setAttribute("data-act", act);
+    b.setAttribute("data-id", String(id));
+    if (cls) b.className = cls;
+    return b;
+  }
+
+  function render() {
+    var q = searchInput.value.trim().toLowerCase();
+    var nearBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 80;
+    stickToBottom = nearBottom;
+    var list = q
+      ? messages.filter(function (m) { return (m.name + ": " + m.text + " " + (m.file ? m.file.name : "")).toLowerCase().indexOf(q) !== -1; })
+      : messages;
+    searchCount.textContent = q ? list.length + (list.length === 1 ? " match" : " matches") : "";
+    logEl.textContent = "";
+    if (!list.length) {
+      var e = document.createElement("div");
+      e.className = "empty";
+      e.textContent = !loaded ? "Connecting to the room."
+        : q ? "No messages match your search."
+        : "No messages yet. Say hello.";
+      logEl.appendChild(e);
+      return;
+    }
+    var frag = document.createDocumentFragment();
+    var editInput = null;
+    list.forEach(function (m) {
+      var row = document.createElement("div");
+      row.className = "msg";
+      var t = document.createElement("time");
+      t.textContent = clock(m.ts);
+      var body = document.createElement("div");
+      body.className = "body";
+      var who = document.createElement("span");
+      who.className = "who";
+      who.style.setProperty("--h", String(hueFor(m.name)));
+      appendHighlighted(who, m.name + ":", q);
+      body.appendChild(who);
+      body.appendChild(document.createTextNode(" "));
+      if (isAdmin && editingId === m.id) {
+        editInput = document.createElement("input");
+        editInput.type = "text";
+        editInput.className = "edit-input";
+        editInput.maxLength = 500;
+        editInput.value = editDraft;
+        editInput.setAttribute("data-edit", "1");
+        editInput.setAttribute("aria-label", "Edit message");
+        body.appendChild(editInput);
+      } else {
+        appendHighlighted(body, m.text, q);
+        if (m.edited) {
+          var ed = document.createElement("span");
+          ed.className = "edited";
+          ed.textContent = "(edited)";
+          body.appendChild(ed);
+        }
+      }
+      if (m.file) body.appendChild(fileBlock(m.file));
+      row.appendChild(t);
+      row.appendChild(body);
+      if (isAdmin && m.id != null) {
+        var tools = document.createElement("span");
+        tools.className = "tools";
+        if (editingId === m.id) {
+          tools.appendChild(toolButton("save", "save", m.id));
+          tools.appendChild(toolButton("cancel", "cancel", m.id));
+        } else {
+          tools.appendChild(toolButton("edit", "edit", m.id));
+          tools.appendChild(toolButton("delete", "delete", m.id, "del"));
+        }
+        row.appendChild(tools);
+      }
+      frag.appendChild(row);
+    });
+    logEl.appendChild(frag);
+    if (editInput) {
+      editInput.focus();
+      var len = editInput.value.length;
+      editInput.setSelectionRange(len, len);
+    } else if (nearBottom) {
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+  }
+
+  function findMsg(id) {
+    for (var i = 0; i < messages.length; i++) if (messages[i].id === id) return messages[i];
+    return null;
+  }
+  function saveEdit() {
+    var text = editDraft.trim();
+    var editing = findMsg(editingId);
+    if (!text && !(editing && editing.file)) { setNote("A message cannot be empty. Use delete to remove it.", true); return; }
+    if (sendJson({ type: "edit", id: editingId, text: text })) {
+      editingId = null;
+      editDraft = "";
+      setNote("");
+      render();
+    }
+  }
+
+  // admin buttons and the edit box, handled once on the log
+  logEl.addEventListener("click", function (ev) {
+    var b = ev.target.closest && ev.target.closest("button[data-act]");
+    if (!b || !isAdmin) return;
+    var id = Number(b.getAttribute("data-id"));
+    var act = b.getAttribute("data-act");
+    if (act === "edit") {
+      var m = findMsg(id);
+      if (!m) return;
+      editingId = id;
+      editDraft = m.text;
+      render();
+    } else if (act === "cancel") {
+      editingId = null;
+      editDraft = "";
+      render();
+    } else if (act === "save") {
+      saveEdit();
+    } else if (act === "delete") {
+      if (b.getAttribute("data-confirm") === "1") {
+        sendJson({ type: "delete", id: id });
+      } else {
+        b.textContent = "really delete?";
+        b.setAttribute("data-confirm", "1");
+        setTimeout(function () {
+          if (b.isConnected && b.getAttribute("data-confirm") === "1") {
+            b.textContent = "delete";
+            b.removeAttribute("data-confirm");
+          }
+        }, 4000);
+      }
+    }
+  });
+  logEl.addEventListener("input", function (ev) {
+    if (ev.target.getAttribute && ev.target.getAttribute("data-edit")) editDraft = ev.target.value;
+  });
+  logEl.addEventListener("keydown", function (ev) {
+    if (!ev.target.getAttribute || !ev.target.getAttribute("data-edit")) return;
+    if (ev.key === "Enter") { ev.preventDefault(); saveEdit(); }
+    else if (ev.key === "Escape") { editingId = null; editDraft = ""; render(); msgInput.focus(); }
+  });
+
+  function showChat() {
+    joinEl.hidden = true;
+    chatEl.hidden = false;
+    meName.textContent = username;
+    logEl.scrollTop = logEl.scrollHeight;
+    msgInput.focus();
+  }
+  function showJoin() {
+    chatEl.hidden = true;
+    joinEl.hidden = false;
+    nameInput.value = username;
+    nameInput.focus();
+    nameInput.select();
+  }
+
+  joinForm.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var n = nameInput.value.replace(/\s+/g, " ").trim();
+    if (n.length < 2) { joinErr.textContent = "Pick a username with at least 2 characters."; return; }
+    if (n.length > 20) { joinErr.textContent = "Usernames can be at most 20 characters."; return; }
+    joinErr.textContent = "";
+    username = n;
+    lsSet(NAME_KEY, n);
+    showChat();
+    render();
+  });
+  renameBtn.addEventListener("click", showJoin);
+  searchInput.addEventListener("input", render);
+
+  // slash commands; returns true when the text was handled here and must not be posted
+  function handleCommand(text) {
+    var cmd = text.split(/\s+/)[0].toLowerCase();
+    if (cmd === "/admin") {
+      var pw = text.slice(6).trim();
+      if (!pw) { setNote("Usage: /admin yourpassword"); return true; }
+      sendJson({ type: "login", password: pw });
+      return true;
+    }
+    if (cmd === "/clear") {
+      if (!isAdmin) { setNote("Only the admin can do that.", true); return true; }
+      var now = Date.now();
+      if (now - pendingClearAt < 10000) {
+        pendingClearAt = 0;
+        sendJson({ type: "clear" });
+      } else {
+        pendingClearAt = now;
+        setNote("This deletes every message for everyone. Type /clear again within 10 seconds to confirm.", true);
+      }
+      return true;
+    }
+    if (cmd === "/logout") {
+      if (!isAdmin) { setNote("You are not logged in as admin."); return true; }
+      sendJson({ type: "logout", token: lsGet(TOKEN_KEY) || "" });
+      lsDel(TOKEN_KEY);
+      return true;
+    }
+    if (cmd === "/help") {
+      setNote(isAdmin
+        ? "Admin commands: /clear, /logout. Use edit and delete next to any message."
+        : "Type a message and press Enter. Use the search box to filter the chat.");
+      return true;
+    }
+    return false;
+  }
+
+  sendForm.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var text = msgInput.value.trim();
+    if (uploading) { setNote("Wait for the upload to finish."); return; }
+    if (!text && !attachment) return;
+    if (!attachment && text.charAt(0) === "/" && handleCommand(text)) { msgInput.value = ""; return; }
+    var payload = { type: "msg", name: username, text: text };
+    if (attachment) payload.fileId = attachment.id;
+    if (!sendJson(payload)) return;
+    msgInput.value = "";
+    attachment = null;
+    renderChip();
+    setNote("");
+    msgInput.focus();
+  });
+
+  // ---------- attachments: the + menu, file upload, drawing pad ----------
+  var plusBtn = $("plusBtn"), plusMenu = $("plusMenu"), fileInput = $("fileInput");
+  var chipEl = $("attach"), chipName = $("attachName"), chipRemove = $("attachRemove");
+  var attachment = null, uploading = false, uploadName = "", uploadPct = 0;
+  var MAX_FILE = 10 * 1024 * 1024;    // pictures, documents and other files (keep in step with server.js)
+  var MAX_MEDIA = 50 * 1024 * 1024;   // video and audio
+  function isMedia(f) {
+    return /^(video|audio)\//.test(f.type || "") || /\.(mp4|m4v|mov|webm|mp3|wav|ogg|m4a)$/i.test(f.name || "");
+  }
+
+  function fmtSize(n) {
+    if (n < 1024) return n + " B";
+    if (n < 1024 * 1024) return Math.round(n / 1024) + " KB";
+    return (n / 1048576).toFixed(1) + " MB";
+  }
+
+  // how an attachment looks inside a message
+  function fileBlock(f) {
+    var wrap = document.createElement("div");
+    wrap.className = "att";
+    if (!f || !/^[a-f0-9]{24}$/.test(f.id)) return wrap;
+    var url = "/files/" + f.id;
+    var name = String(f.name || "file");
+    if (f.kind === "image") {
+      var a = document.createElement("a");
+      a.href = url; a.target = "_blank"; a.rel = "noopener";
+      var img = document.createElement("img");
+      img.className = "pic"; img.src = url; img.alt = name; img.loading = "lazy";
+      img.addEventListener("load", function () { if (stickToBottom) logEl.scrollTop = logEl.scrollHeight; });
+      a.appendChild(img);
+      wrap.appendChild(a);
+    } else if (f.kind === "video") {
+      var v = document.createElement("video");
+      v.className = "vid"; v.controls = true; v.playsInline = true; v.preload = "metadata"; v.src = url;
+      v.addEventListener("loadedmetadata", function () { if (stickToBottom) logEl.scrollTop = logEl.scrollHeight; });
+      wrap.appendChild(v);
+    } else if (f.kind === "audio") {
+      var au = document.createElement("audio");
+      au.className = "aud"; au.controls = true; au.preload = "metadata"; au.src = url;
+      wrap.appendChild(au);
+    } else {
+      var l = document.createElement("a");
+      l.className = "filelink"; l.href = url; l.download = name;
+      l.textContent = name + " (" + fmtSize(f.size || 0) + ")";
+      wrap.appendChild(l);
+    }
+    return wrap;
+  }
+
+  function renderChip() {
+    if (!attachment && !uploading) { chipEl.hidden = true; return; }
+    chipEl.hidden = false;
+    chipName.textContent = uploading ? "Uploading " + uploadName + " " + uploadPct + "%" : attachment.name + " (" + fmtSize(attachment.size) + ")";
+    chipRemove.hidden = uploading;
+  }
+  chipRemove.addEventListener("click", function () { attachment = null; renderChip(); msgInput.focus(); });
+
+  function uploadError(status) {
+    if (status === 413) return "That file is too big. The limit is 10 MB, or 50 MB for video and audio.";
+    if (status === 415) return "That file type is not allowed. Images, video, audio, PDF, text and zip files work.";
+    if (status === 429) return "Too many uploads. Wait a few minutes and try again.";
+    if (status === 507) return "The site has run out of upload space.";
+    return "The upload failed. Try again.";
+  }
+  function uploadBlob(blob, name, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var x = new XMLHttpRequest();
+      x.open("POST", "/upload?name=" + encodeURIComponent(name));
+      x.setRequestHeader("Content-Type", "application/octet-stream");
+      if (onProgress && x.upload) {
+        x.upload.onprogress = function (e) { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+      }
+      x.onload = function () {
+        var d = {};
+        try { d = JSON.parse(x.responseText); } catch (e) {}
+        if (x.status >= 200 && x.status < 300 && d.id) resolve(d);
+        else reject(new Error(uploadError(x.status)));
+      };
+      x.onerror = function () { reject(new Error("The upload failed. Check your connection and try again.")); };
+      x.send(blob);
+    });
+  }
+
+  function closeMenu() {
+    plusMenu.hidden = true;
+    plusBtn.setAttribute("aria-expanded", "false");
+  }
+  plusBtn.addEventListener("click", function (ev) {
+    ev.stopPropagation();
+    var willOpen = plusMenu.hidden;
+    plusMenu.hidden = !willOpen;
+    plusBtn.setAttribute("aria-expanded", String(willOpen));
+    if (willOpen) plusMenu.querySelector("button").focus();
+  });
+  document.addEventListener("click", function (ev) {
+    if (!plusMenu.hidden && !plusMenu.contains(ev.target)) closeMenu();
+  });
+  plusMenu.addEventListener("click", function (ev) {
+    var b = ev.target.closest && ev.target.closest("button[data-pick]");
+    if (!b) return;
+    closeMenu();
+    if (b.getAttribute("data-pick") === "file") fileInput.click(); else openDraw();
+  });
+
+  fileInput.addEventListener("change", function () {
+    var f = fileInput.files && fileInput.files[0];
+    fileInput.value = "";
+    if (!f) return;
+    if (f.size === 0) { setNote("That file is empty.", true); return; }
+    if (f.size > MAX_MEDIA) { setNote("That file is over 50 MB.", true); return; }
+    if (f.size > MAX_FILE && !isMedia(f)) { setNote("That file is over 10 MB. Only video and audio can be up to 50 MB.", true); return; }
+    uploading = true; uploadName = f.name; uploadPct = 0; attachment = null;
+    renderChip(); setNote("");
+    uploadBlob(f, f.name, function (p) { uploadPct = Math.round(p * 100); renderChip(); })
+      .then(function (d) { attachment = d; })
+      .catch(function (e) { setNote(e.message, true); })
+      .then(function () { uploading = false; renderChip(); msgInput.focus(); });
+  });
+
+  // ----- drawing pad -----
+  var drawModal = $("drawModal"), canvas = $("drawCanvas"), ctx = canvas.getContext("2d");
+  var drawErr = $("drawErr"), drawSend = $("drawSend");
+  var CW = canvas.width, CH = canvas.height;
+  var COLORS = [["Black", "#111111"], ["Red", "#d32f2f"], ["Blue", "#1976d2"], ["Green", "#2e7d32"], ["Yellow", "#f9a825"], ["Purple", "#7b1fa2"]];
+  var penColor = COLORS[0][1], penSize = 6, erasing = false, drawing = false, lastPt = null, undoStack = [];
+
+  COLORS.forEach(function (c, i) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "swatch" + (i === 0 ? " on" : "");
+    b.style.background = c[1]; b.setAttribute("aria-label", c[0]); b.setAttribute("data-color", c[1]);
+    $("drawColors").appendChild(b);
+  });
+
+  function whiteBoard() { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, CW, CH); }
+  function pushUndo() {
+    undoStack.push(ctx.getImageData(0, 0, CW, CH));
+    if (undoStack.length > 15) undoStack.shift();
+  }
+  function setErasing(on) {
+    erasing = on;
+    $("drawEraser").classList.toggle("on", on);
+    $("drawEraser").setAttribute("aria-pressed", String(on));
+  }
+  function openDraw() {
+    whiteBoard(); undoStack = []; drawErr.textContent = ""; setErasing(false); setNote("");
+    drawSend.disabled = false;
+    drawModal.hidden = false;
+    $("drawCancel").focus();
+  }
+  function closeDraw() { drawModal.hidden = true; plusBtn.focus(); }
+
+  function pointOf(ev) {
+    var r = canvas.getBoundingClientRect();
+    return { x: (ev.clientX - r.left) * CW / r.width, y: (ev.clientY - r.top) * CH / r.height };
+  }
+  function strokeTo(p) {
+    ctx.strokeStyle = erasing ? "#ffffff" : penColor;
+    ctx.lineWidth = erasing ? penSize * 2.5 : penSize;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.beginPath(); ctx.moveTo(lastPt.x, lastPt.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    lastPt = p;
+  }
+  canvas.addEventListener("pointerdown", function (ev) {
+    ev.preventDefault();
+    try { canvas.setPointerCapture(ev.pointerId); } catch (e) {}
+    pushUndo();
+    drawing = true;
+    lastPt = pointOf(ev);
+    strokeTo({ x: lastPt.x + 0.01, y: lastPt.y });
+  });
+  canvas.addEventListener("pointermove", function (ev) {
+    if (!drawing) return;
+    ev.preventDefault();
+    strokeTo(pointOf(ev));
+  });
+  function stopDrawing() { drawing = false; }
+  canvas.addEventListener("pointerup", stopDrawing);
+  canvas.addEventListener("pointercancel", stopDrawing);
+
+  $("drawColors").addEventListener("click", function (ev) {
+    var b = ev.target.closest && ev.target.closest("button[data-color]");
+    if (!b) return;
+    penColor = b.getAttribute("data-color");
+    setErasing(false);
+    Array.prototype.forEach.call($("drawColors").children, function (x) { x.classList.toggle("on", x === b); });
+  });
+  Array.prototype.forEach.call(drawModal.querySelectorAll("button[data-size]"), function (b) {
+    b.addEventListener("click", function () {
+      penSize = Number(b.getAttribute("data-size"));
+      Array.prototype.forEach.call(drawModal.querySelectorAll("button[data-size]"), function (x) { x.classList.toggle("on", x === b); });
+    });
+  });
+  $("drawEraser").addEventListener("click", function () { setErasing(!erasing); });
+  $("drawUndo").addEventListener("click", function () {
+    var s = undoStack.pop();
+    if (s) ctx.putImageData(s, 0, 0);
+  });
+  $("drawClear").addEventListener("click", function () { pushUndo(); whiteBoard(); });
+  $("drawCancel").addEventListener("click", closeDraw);
+
+  drawSend.addEventListener("click", function () {
+    drawErr.textContent = "";
+    if (!ws || ws.readyState !== 1) { drawErr.textContent = "Not connected yet. Try again in a moment."; return; }
+    drawSend.disabled = true;
+    canvas.toBlob(function (blob) {
+      if (!blob) { drawErr.textContent = "Could not read the drawing."; drawSend.disabled = false; return; }
+      uploadBlob(blob, "drawing.png").then(function (d) {
+        var payload = { type: "msg", name: username, text: msgInput.value.trim(), fileId: d.id };
+        if (sendJson(payload)) { msgInput.value = ""; closeDraw(); }
+        else { drawErr.textContent = "Not connected. Try again."; }
+      }).catch(function (e) {
+        drawErr.textContent = e.message;
+      }).then(function () { drawSend.disabled = false; });
+    }, "image/png");
+  });
+
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Escape") return;
+    if (!drawModal.hidden) closeDraw();
+    else if (!plusMenu.hidden) { closeMenu(); plusBtn.focus(); }
+  });
+
+  function connect() {
+    var url = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws";
+    setStatus("wait", "Connecting");
+    ws = new WebSocket(url);
+
+    ws.onopen = function () {
+      retry = 0;
+      var tok = lsGet(TOKEN_KEY);
+      if (tok) ws.send(JSON.stringify({ type: "resume", token: tok }));
+    };
+
+    ws.onmessage = function (ev) {
+      var d;
+      try { d = JSON.parse(ev.data); } catch (e) { return; }
+      if (d.type === "history") {
+        messages = d.messages || [];
+        loaded = true;
+        updateStatusLive();
+        render();
+        logEl.scrollTop = logEl.scrollHeight;
+      } else if (d.type === "msg") {
+        messages.push(d.message);
+        if (messages.length > MAX_KEPT) messages = messages.slice(-MAX_KEPT);
+        render();
+      } else if (d.type === "edit") {
+        var m = findMsg(d.id);
+        if (m) { m.text = d.text; m.edited = true; }
+        render();
+      } else if (d.type === "delete") {
+        messages = messages.filter(function (x) { return x.id !== d.id; });
+        if (editingId === d.id) editingId = null;
+        render();
+      } else if (d.type === "clear") {
+        messages = [];
+        editingId = null;
+        render();
+        setNote("The chat was cleared.");
+      } else if (d.type === "online") {
+        online = d.n;
+        if (loaded) updateStatusLive();
+      } else if (d.type === "admin") {
+        if (d.ok) {
+          if (d.token) { lsSet(TOKEN_KEY, d.token); setNote("Admin mode on. Type /help for commands."); }
+          setAdmin(true);
+        } else if (d.resume) {
+          lsDel(TOKEN_KEY);
+          setAdmin(false);
+        } else if (d.loggedOut) {
+          setAdmin(false);
+          setNote("Logged out of admin mode.");
+        } else if (d.reason === "disabled") {
+          setNote("Admin login is not set up on this server.", true);
+        } else if (d.reason === "locked") {
+          setNote("Too many wrong passwords. Try again in 10 minutes.", true);
+        } else {
+          setNote("Wrong password.", true);
+        }
+      } else if (d.type === "error") {
+        if (d.reason === "slow") setNote("Slow down a little. You are sending messages too fast.", true);
+        else if (d.reason === "name") setNote("Your username is not valid. Use Change name to pick another.", true);
+        else if (d.reason === "forbidden") { setNote("Admin session ended. Type /admin and your password to log in again.", true); setAdmin(false); }
+        else if (d.reason === "missing") setNote("That message no longer exists.", true);
+        else if (d.reason === "file") setNote("That attachment expired before it was sent. Attach it again.", true);
+        else setNote("That message could not be sent. Keep it under 500 characters.", true);
+      }
+    };
+
+    ws.onclose = function () {
+      setStatus("down", "Reconnecting");
+      var wait = Math.min(15000, 800 * Math.pow(2, retry++));
+      setTimeout(connect, wait);
+    };
+    ws.onerror = function () { try { ws.close(); } catch (e) {} };
+  }
+
+  var saved = lsGet(NAME_KEY);
+  if (saved && saved.trim().length >= 2) {
+    username = saved.trim().slice(0, 20);
+    showChat();
+  } else {
+    nameInput.focus();
+  }
+  render();
+  connect();
+})();
+</script>
+</body>
+</html>
